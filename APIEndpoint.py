@@ -107,3 +107,22 @@ def cosine_similarity(vec1, vec2):
     magnitude1 = sum(a ** 2 for a in vec1) ** 0.5
     magnitude2 = sum(a ** 2 for a in vec2) ** 0.5
     return dot_product / (magnitude1 * magnitude2)
+@app.patch("/documents/{id}/toggle")
+async def toggle_document(id: int):
+    """
+    Enables or disables a document for the Q&A process.
+    """
+    db = await get_db()
+    try:
+        document = await db.fetchrow("SELECT is_active FROM documents WHERE id = $1", id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        new_status = not document["is_active"]
+        await db.execute("UPDATE documents SET is_active = $1 WHERE id = $2", new_status, id)
+
+        return {"message": f"Document {'enabled' if new_status else 'disabled'} successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await db.close()
